@@ -1,0 +1,15 @@
+[package]
+name = "miair-miplay-receiver"
+version = "0.1.0"
+edition = "2024"
+license = "AGPL-3.0-only"
+
+[dependencies]
+fusionplay-miplay-sdk = { path = "../vendor/FusionPlay.MiPlaySdk", default-features = false, features = ["headless"] }
+serde_json = "1"
+anyhow = "1"
+
+[profile.release]
+opt-level = 1
+debug = 0
+strip = true

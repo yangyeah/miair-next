@@ -18,6 +18,10 @@
 
 # 💡 项目介绍
 
+**此 Fork 新增：小米妙播（MiPlay）实验性接收服务。** 已在小米 15 / HyperOS 3.0.307、
+ARM64 飞牛与小爱音箱 Play 上验证发现、连接和播放。支持附加容器或包含主应用的集成镜像；
+配置、构建、替换现有容器和回退见 [妙播部署说明](miplay/README.md)。飞牛安装包尚未重新打包。
+
 MiAir Next 让小米小爱音箱化身 **DLNA 渲染器**、**AirPlay 接收器** 与 **Spotify Connect 设备**，并附带一个现代化的 Web 管理后台。
 
 本项目在 [MiAir](https://github.com/KiriChen-Wind/MiAir) 协议层的基础上重构：后端改用 **FastAPI**，前端使用 **Vue 3 + Vite + Naive UI** 自建轻量管理后台，通过 GitHub Actions 云端构建多架构 Docker 镜像，一条命令即可部署。
@@ -75,6 +79,9 @@ curl -fsSL https://raw.githubusercontent.com/deerwan/miair-next/main/install.sh 
 ## 📄 许可证
 
 本项目以 **GPL-3.0-or-later** 发布，详见 [LICENSE](LICENSE)。
+
+本 Fork 新增的 `miplay/` 接收器、桥接器和 FusionPlay 组件采用 **AGPL-3.0-only**，
+复用的 MiAir 代码保留原许可。详见 [MiPlay NOTICE](miplay/NOTICE) 与 [MiPlay LICENSE](miplay/LICENSE)。
 
 协议引擎包含 / 衍生自以下第三方代码，各组件许可：
 

@@ -1,0 +1,12 @@
+ARG BASE_IMAGE=mrdeer1997/miair-next:latest
+FROM ${BASE_IMAGE}
+COPY --chmod=755 miplay/bin/miair-miplay-receiver /usr/local/bin/miair-miplay-receiver
+COPY backend/app /opt/miplay/app
+COPY miplay/bridge.py /opt/miplay/bridge.py
+COPY miplay/LICENSE miplay/NOTICE /usr/share/licenses/miplay/
+WORKDIR /opt/miplay
+ENV PYTHONUNBUFFERED=1
+LABEL org.opencontainers.image.source="https://github.com/yangyeah/miair-next" \
+      org.opencontainers.image.licenses="AGPL-3.0-only AND GPL-3.0-or-later"
+HEALTHCHECK --interval=30s --timeout=3s CMD python -c "import json,urllib.request; c=json.load(open('/run/miplay/config.json')); urllib.request.urlopen('http://127.0.0.1:%s/health'%c.get('health_port',18301),timeout=2)"
+ENTRYPOINT ["python", "/opt/miplay/bridge.py"]

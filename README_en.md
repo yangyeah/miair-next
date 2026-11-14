@@ -18,6 +18,14 @@
 
 # 💡 Introduction
 
+**This fork adds an experimental Xiaomi MiPlay receiver.** Discovery, connection and
+audio playback were verified with Xiaomi 15 / HyperOS 3.0.307, ARM64 fnOS and a
+XiaoAI Play speaker. It can run as a companion container or an integrated image
+containing the main application. See [MiPlay setup](miplay/README.md).
+The fnOS installation package has not been rebuilt.
+The new companion and vendored FusionPlay components are AGPL-3.0-only; see
+[MiPlay NOTICE](miplay/NOTICE). Existing MiAir code retains its original license.
+
 MiAir Next turns your Xiaomi XiaoAI speaker into a **DLNA renderer**, an **AirPlay receiver**, and a **Spotify Connect device**, and ships with a modern web admin dashboard.
 
 Built on top of the protocol layer from [MiAir](https://github.com/KiriChen-Wind/MiAir), the project has been reworked: the backend now uses **FastAPI**, while the frontend is a self-built lightweight admin dashboard with **Vue 3 + Vite + Naive UI**. Multi-architecture Docker images are built in the cloud via GitHub Actions, so you can deploy with a single command.

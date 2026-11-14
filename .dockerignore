@@ -38,3 +38,11 @@ backend/scripts/*
 
 # 测试代码不进生产镜像
 backend/tests/
+
+# MiPlay build context must not contain deployment credentials or caches.
+miplay/config.json
+miplay/state/
+miplay/toolchain/
+miplay/target/
+miplay/receiver/target/
+miplay/vendor/**/target/

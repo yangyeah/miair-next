@@ -1,0 +1,21 @@
+MiPlay companion service
+
+The receiver wrapper and bridge.py are AGPL-3.0-only; see LICENSE.
+
+Vendored components: FusionPlay.MiPlaySdk and FusionPlay.AndroidIfAddrs
+Upstream: https://github.com/rosienosiesie/FusionPlay-Android
+Revision: b43fe1130c3fdb233dcb41c2da174b858eb44cc2
+License: AGPL-3.0-only (the actual upstream LICENSE and Cargo manifests).
+Changes: optional native-audio dependency; headless PCM output and session
+events; output tests; release build settings; disable cleanup broadcasts
+for upstream development-only identities; refreshed dependency lockfiles.
+
+The companion imports backend/app/engine/audio_stream.py and timed_audio.py
+from this repository under GPL-3.0-or-later. They are not duplicated here.
+The base MiAir image retains its own component licenses; see ../NOTICE.
+
+This is an unofficial compatibility implementation, not a Xiaomi-certified
+device or an implementation of Xiaomi's official receiver SDK.
+
+Corresponding source, build scripts and modifications are available at:
+https://github.com/yangyeah/miair-next/tree/main/miplay

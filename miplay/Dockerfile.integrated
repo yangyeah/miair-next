@@ -1,0 +1,10 @@
+# First build Dockerfile or Dockerfile.prebuilt as miair-next-miplay:local.
+ARG MIPLAY_IMAGE=miair-next-miplay:local
+FROM ${MIPLAY_IMAGE}
+COPY miplay/supervisor.py /opt/miplay/supervisor.py
+COPY miplay/install_stop_api.py /opt/miplay/install_stop_api.py
+RUN python /opt/miplay/install_stop_api.py
+WORKDIR /app/backend
+HEALTHCHECK --interval=30s --timeout=6s --start-period=60s --retries=3 CMD python /opt/miplay/supervisor.py --healthcheck
+ENTRYPOINT ["python", "/opt/miplay/supervisor.py"]
+CMD ["python", "run.py"]

@@ -1,0 +1,33 @@
+services:
+  miair-next:
+    image: miair-next-miplay:integrated
+    build:
+      context: ..
+      dockerfile: miplay/Dockerfile.integrated
+      args:
+        MIPLAY_IMAGE: ${MIPLAY_IMAGE:-miair-next-miplay:local}
+    network_mode: host
+    restart: unless-stopped
+    stop_grace_period: 45s
+    environment:
+      MIAIR_DATA: /app/data
+      MIAIR_WEB_PORT: '8300'
+      MIPLAY_UID: ${MIPLAY_UID:-1000}
+      MIPLAY_GID: ${MIPLAY_GID:-1000}
+    volumes:
+      - type: bind
+        source: ${MIAIR_DATA_DIR:?Set MIAIR_DATA_DIR to the existing MiAir data directory}
+        target: /app/data
+        bind:
+          create_host_path: false
+      - type: bind
+        source: ./config.json
+        target: /run/miplay/config.json
+        read_only: true
+        bind:
+          create_host_path: false
+      - type: bind
+        source: ./state
+        target: /state
+        bind:
+          create_host_path: false

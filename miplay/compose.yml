@@ -1,0 +1,31 @@
+services:
+  miplay:
+    image: miair-next-miplay:local
+    build:
+      context: ..
+      dockerfile: miplay/Dockerfile
+      args:
+        BASE_IMAGE: ${MIAIR_BASE_IMAGE:-mrdeer1997/miair-next:latest}
+    network_mode: host
+    restart: unless-stopped
+    user: "${MIPLAY_UID:-1000}:${MIPLAY_GID:-1000}"
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    mem_limit: 256m
+    cpus: 1
+    pids_limit: 128
+    tmpfs:
+      - /tmp:rw,nosuid,size=16m
+    volumes:
+      - type: bind
+        source: ./config.json
+        target: /run/miplay/config.json
+        read_only: true
+        bind:
+          create_host_path: false
+      - type: bind
+        source: ./state
+        target: /state
+        bind:
+          create_host_path: false

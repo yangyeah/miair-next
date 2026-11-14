@@ -94,3 +94,8 @@ canonical sources:
 The in-file attribution notices added to the Apache-2.0-derived AirPlay
 source files, together with this file, satisfy the attribution and notice
 requirements of Apache-2.0 §4 and MIT §3.
+
+MiPlay companion added in the yangyeah fork:
+The miplay/ receiver, Python bridge and vendored FusionPlay components are
+AGPL-3.0-only. See miplay/NOTICE and miplay/LICENSE for the pinned upstream
+revision and modifications. Existing MiAir components retain their licenses.

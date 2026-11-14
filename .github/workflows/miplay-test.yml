@@ -1,0 +1,37 @@
+name: MiPlay tests
+
+on:
+  push:
+    branches: [main]
+    paths: ['miplay/**', 'backend/app/engine/audio_stream.py', 'backend/app/engine/airplay/**', 'backend/tests/test_airplay_imports.py', '.github/workflows/miplay-test.yml']
+  pull_request:
+    paths: ['miplay/**', 'backend/app/engine/audio_stream.py', 'backend/app/engine/airplay/**', 'backend/tests/test_airplay_imports.py', '.github/workflows/miplay-test.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  bridge:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+      - run: python -m pip install -e './backend[dev]'
+      - run: ruff check miplay/*.py miplay/tests
+      - run: ruff format --check miplay/*.py miplay/tests
+      - run: python -m unittest discover -s miplay/tests -v
+        env:
+          PYTHONPATH: backend:miplay
+      - run: python -m pytest backend/tests/test_airplay_imports.py -v
+  receiver:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - run: rustup toolchain install 1.100.0 --profile minimal
+      - run: cargo +1.100.0 build --locked --release --manifest-path miplay/receiver/Cargo.toml
+      - run: cargo +1.100.0 test --locked --release --manifest-path miplay/vendor/FusionPlay.MiPlaySdk/Cargo.toml --no-default-features --features headless
+        env:
+          CARGO_TARGET_DIR: ${{ github.workspace }}/miplay/receiver/target

@@ -69,7 +69,7 @@ jobs:
   build:
     needs: [test, image-check]
     # main/tag publish the same complete image; PR builds never publish.
-    if: github.event_name == 'push'
+    if: github.event_name == 'push' && github.repository == 'deerwan/miair-next'
     runs-on: ubuntu-latest
     permissions:
       contents: read

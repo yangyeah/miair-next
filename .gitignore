@@ -38,3 +38,12 @@ fnos/*.fpk
 .env
 .env.*
 !.env.example
+
+# MiPlay companion: private settings, identity and local build artifacts
+/miplay/config.json
+/miplay/state/
+/miplay/toolchain/
+/miplay/target/
+/miplay/receiver/target/
+/miplay/vendor/**/target/
+/miplay/bin/

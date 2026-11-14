@@ -1,0 +1,11 @@
+{
+  "host": "192.168.1.10",
+  "name": "MiAir MiPlay",
+  "interface": "eth0",
+  "api": "http://127.0.0.1:8300/api/v1",
+  "username": "YOUR_MIAIR_USERNAME",
+  "password": "YOUR_MIAIR_PASSWORD",
+  "speaker_did": "YOUR_SPEAKER_DID",
+  "audio_port": 18300,
+  "health_port": 18301
+}
