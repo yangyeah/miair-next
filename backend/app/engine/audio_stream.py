@@ -57,6 +57,7 @@ class AudioStreamServer:
         *,
         isolate_sessions: bool = False,
         output_latency_ms: int | None = None,
+        queue_capacity: int | None = None,
     ):
         self.hostname = hostname
         self._label = label
@@ -84,7 +85,7 @@ class AudioStreamServer:
         self._isolate_sessions = isolate_sessions
         self._output_latency_ns = (output_latency_ms * 1_000_000
                                    if output_latency_ms is not None else None)
-        self._queue_capacity = 1000 if output_latency_ms is not None else _QUEUE_MAXSIZE
+        self._queue_capacity = queue_capacity or (1000 if output_latency_ms is not None else _QUEUE_MAXSIZE)
         self._stream_lock = threading.RLock()
         self._generation = 0
         self._isolated_clients: dict[object, tuple] = {}
@@ -222,6 +223,15 @@ class AudioStreamServer:
             return
         with self._stream_lock:
             self._write_pcm_locked(data)
+
+    def discard_queued_pcm(self):
+        """Discard pending audio while keeping the current HTTP stream open."""
+        with self._stream_lock:
+            while True:
+                try:
+                    self._audio_queue.get_nowait()
+                except queue.Empty:
+                    return
 
     def write_timed_pcm(self, data: bytes, playtime_ns: int):
         if self._output_latency_ns is None:

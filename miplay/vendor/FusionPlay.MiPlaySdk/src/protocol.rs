@@ -240,10 +240,13 @@ impl ControlHub {
         let shutdown_stream = stream
             .try_clone()
             .context("clone MiPlay control socket for shutdown")?;
-        self.sessions
+        let mut sessions = self.sessions
             .lock()
-            .map_err(|_| anyhow::anyhow!("MiPlay control session registry is poisoned"))?
-            .insert(id, shutdown_stream);
+            .map_err(|_| anyhow::anyhow!("MiPlay control session registry is poisoned"))?;
+        if sessions.len() >= 32 {
+            bail!("MiPlay control session limit reached");
+        }
+        sessions.insert(id, shutdown_stream);
         Ok(())
     }
 
@@ -1066,11 +1069,9 @@ fn run_session(
         .set_nonblocking(false)
         .context("restore blocking MiPlay control socket")?;
     stream.set_nodelay(true).ok();
-    // A paused source can legitimately leave this socket silent for longer
-    // than 30 seconds. The registered shutdown clone interrupts this blocking
-    // read when the listener is explicitly stopped, so an idle timeout is both
-    // unnecessary and harmful here.
-    stream.set_read_timeout(None).ok();
+    // Apply a deadline only to the first frame. Established paused sessions
+    // may legitimately remain idle for an extended period.
+    stream.set_read_timeout(Some(Duration::from_secs(10)))?;
     let local = stream.local_addr().context("read MiPlay local address")?;
     let remote = stream.peer_addr().context("read MiPlay peer address")?;
     let auth_key = generate_auth_key(local, remote);
@@ -1118,8 +1119,13 @@ fn run_session(
         Arc::clone(&next_notification_sequence),
     );
     let mut initial_media_info_notification_sent = false;
+    let mut first_frame = true;
     loop {
         let frame = read_frame(&mut reader, &mut cipher)?;
+        if first_frame {
+            reader.set_read_timeout(None)?;
+            first_frame = false;
+        }
         let (payload_key, payload_type, payload_text) = diagnostic_payload(&frame.body);
         events(json!({
             "event": "protocol_trace",

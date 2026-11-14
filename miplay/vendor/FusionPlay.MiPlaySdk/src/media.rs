@@ -1420,8 +1420,8 @@ fn parse_rtp_packet(packet: &[u8]) -> Option<RtpPacketView<'_>> {
     if packet[0] & 0x20 != 0 {
         end = end.checked_sub(*packet.last()? as usize)?;
     }
-    (offset <= end).then_some(RtpPacketView {
-        payload: &packet[offset..end],
+    Some(RtpPacketView {
+        payload: packet.get(offset..end)?,
         sequence_number,
         timestamp: rtp_timestamp,
         // Payload type 33 is RTP/MP2T and follows the mandatory 90 kHz clock.
@@ -1490,6 +1490,11 @@ impl TsDemuxer {
                 output.push(aac);
             }
             self.pes_rtp_pts_micros = rtp_pts_micros;
+        }
+        // A length-zero PES ends at the next start indicator. Bound corrupt
+        // streams that omit that indicator indefinitely.
+        if self.pes.len() + packet.len() - offset > 1024 * 1024 {
+            bail!("MiPlay audio PES exceeds 1 MiB");
         }
         self.pes.extend_from_slice(&packet[offset..]);
         if self.pes.len() >= 6 {

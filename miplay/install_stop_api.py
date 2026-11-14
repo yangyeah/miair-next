@@ -41,6 +41,17 @@ def install(path):
 
 
 if __name__ == "__main__":
+    # Backport the upstream event-loop fix on older integrated base images.
+    server = Path("/app/backend/app/engine/airplay/server.py")
+    if server.is_file():
+        source = server.read_text(encoding="utf-8")
+        old = "        self._mdns.stop()\n"
+        if old in source and "import asyncio" in source:
+            updated = source.replace(
+                old, "        await asyncio.to_thread(self._mdns.stop)\n"
+            )
+            compile(updated, str(server), "exec")
+            server.write_text(updated, encoding="utf-8")
     changed = install(Path("/app/backend/app/api/v1/speakers.py"))
     print(
         "MiAir stop route installed" if changed else "MiAir stop route already exists"

@@ -38,6 +38,9 @@ class FakeStream:
     def write_pcm(self, data):
         self.data.append(data)
 
+    def discard_queued_pcm(self):
+        self.data.clear()
+
 
 def pcm(sid, raw=b"\x01\x00\x02\x00"):
     return {
@@ -113,6 +116,69 @@ class BridgeTests(unittest.IsolatedAsyncioTestCase):
         self.assertTrue(self.receiver.stream.closed)
         self.assertFalse(self.receiver.stopping)
         self.assertEqual(self.receiver.api.await_count, 2)
+
+    async def test_short_pause_resumes_without_cloud_roundtrip(self):
+        self.receiver.handle({"event": "bridge_open", "stream_id": 1})
+        self.receiver.handle(pcm(1))
+        await self.settle()
+        self.receiver.stream.has_clients = True
+        self.receiver.handle({"event": "playback_state", "playing": False})
+        self.assertEqual(self.receiver.stream.data, [bridge.SILENCE_PCM])
+        self.receiver.handle(pcm(1))
+        self.assertEqual(self.receiver.stream.data, [bridge.SILENCE_PCM])
+        # The measured pause between user gestures was over 1.7 seconds.
+        self.receiver.paused_at -= 2
+        monitor = asyncio.create_task(self.receiver.watchdog())
+        try:
+            await asyncio.sleep(0.08)
+        finally:
+            monitor.cancel()
+            await asyncio.gather(monitor, return_exceptions=True)
+        self.receiver.api.assert_awaited_once()
+        self.receiver.handle({"event": "playback_state", "playing": True})
+        self.receiver.handle(pcm(1))
+        await self.settle()
+        self.assertIsNone(self.receiver.paused_at)
+        self.assertEqual(self.receiver.stream.session, 1)
+        self.receiver.api.assert_awaited_once()
+
+    async def test_explicit_media_open_overlaps_play_with_decoder_start(self):
+        self.receiver.handle({"event": "status", "state": "media_opening"})
+        self.receiver.api.assert_not_called()
+        self.receiver.handle({"event": "playback_state", "playing": True})
+        await self.settle()
+        self.receiver.api.assert_awaited_once()
+        self.receiver.handle({"event": "bridge_open", "stream_id": 1})
+        self.receiver.handle(pcm(1))
+        await self.settle()
+        self.assertEqual(self.receiver.stream.session, 1)
+        self.assertTrue(self.receiver.stream.data)
+        self.receiver.api.assert_awaited_once()
+
+    async def test_volume_change_removes_samples_with_previous_gain(self):
+        self.receiver.handle({"event": "bridge_open", "stream_id": 1})
+        self.receiver.handle(pcm(1))
+        await self.settle()
+        self.receiver.handle({"event": "volume", "percent": 20})
+        self.assertFalse(self.receiver.stream.data)
+        self.receiver.handle(pcm(1))
+        self.receiver.handle({"event": "volume", "percent": 20})
+        self.assertEqual(len(self.receiver.stream.data), 1)
+
+    async def test_missing_pull_retries_only_twice(self):
+        self.receiver.handle({"event": "bridge_open", "stream_id": 1})
+        monitor = asyncio.create_task(self.receiver.watchdog())
+        try:
+            for _ in range(4):
+                self.receiver.handle(pcm(1))
+                await self.settle()
+                self.receiver.pull_deadline = 1
+                await asyncio.sleep(0.12)
+            self.assertEqual(self.receiver.api.await_count, 3)
+            self.assertEqual(self.receiver.last_error, "NoAudioClient")
+        finally:
+            monitor.cancel()
+            await asyncio.gather(monitor, return_exceptions=True)
 
     async def test_resume_waits_for_pending_stop_and_uses_fresh_url(self):
         self.receiver.handle({"event": "bridge_open", "stream_id": 1})
