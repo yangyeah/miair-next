@@ -290,6 +290,37 @@ class ConfigTests(unittest.TestCase):
 
 
 class HttpAudioTests(unittest.IsolatedAsyncioTestCase):
+    async def test_short_preroll_and_contiguous_bursts_during_playback(self):
+        stream = bridge.Bridge(
+            {"host": "127.0.0.1", "audio_port": 0, "name": "test"}
+        ).stream
+        blocks = [bytes([i]) * 4096 for i in range(20)]
+        await stream.start()
+        try:
+            stream.start_streaming()
+            for block in blocks[:10]:
+                stream.write_pcm(block)
+            async with aiohttp.ClientSession() as session:
+                async with session.get(stream.stream_url) as response:
+                    reader = response.content
+                    await asyncio.wait_for(reader.readexactly(44), 2)
+                    self.assertEqual(
+                        await asyncio.wait_for(reader.readexactly(8192), 2),
+                        b"".join(blocks[8:10]),
+                    )
+                    for block in blocks[10:18]:
+                        stream.write_pcm(block)
+                    self.assertEqual(
+                        await asyncio.wait_for(reader.readexactly(32768), 2),
+                        b"".join(blocks[10:18]),
+                    )
+                    self.assertEqual(stream.playback_dropped_blocks, 0)
+                    for block in blocks[10:]:
+                        stream.write_pcm(block)
+                    self.assertEqual(stream.playback_dropped_blocks, 2)
+        finally:
+            await stream.stop()
+
     async def test_wav_pcm_and_session_token_rotation(self):
         stream = AudioStreamServer(
             "127.0.0.1", route_prefix="miplay", isolate_sessions=True

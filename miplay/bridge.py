@@ -80,8 +80,9 @@ class Bridge:
             label="MiPlay",
             route_prefix="miplay",
             isolate_sessions=True,
-            # Two AAC frames at 48 kHz (43 ms) at most before the HTTP writer.
-            queue_capacity=2,
+            # Eight blocks absorb decoder bursts. Start each GET near live.
+            queue_capacity=8,
+            pre_roll_blocks=2,
         )
         self.stream.set_audio_params(48000, 2, 2)
         self.token = ""
@@ -315,6 +316,7 @@ class Bridge:
                 "stage": self.stage,
                 "pcm_frames": self.frames,
                 "audio_clients": self.stream.client_count,
+                "playback_dropped_blocks": self.stream.playback_dropped_blocks,
                 "active": self.active,
                 "stopping": self.stopping,
                 "last_error": self.last_error,

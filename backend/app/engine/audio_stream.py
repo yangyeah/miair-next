@@ -58,6 +58,7 @@ class AudioStreamServer:
         isolate_sessions: bool = False,
         output_latency_ms: int | None = None,
         queue_capacity: int | None = None,
+        pre_roll_blocks: int | None = None,
     ):
         self.hostname = hostname
         self._label = label
@@ -86,6 +87,8 @@ class AudioStreamServer:
         self._output_latency_ns = (output_latency_ms * 1_000_000
                                    if output_latency_ms is not None else None)
         self._queue_capacity = queue_capacity or (1000 if output_latency_ms is not None else _QUEUE_MAXSIZE)
+        self._pre_roll_blocks = pre_roll_blocks
+        self.playback_dropped_blocks = 0
         self._stream_lock = threading.RLock()
         self._generation = 0
         self._isolated_clients: dict[object, tuple] = {}
@@ -169,6 +172,7 @@ class AudioStreamServer:
                 self._generation += 1
                 if new_session:
                     self._session_id = secrets.token_urlsafe(32)
+                    self.playback_dropped_blocks = 0
                     with self._pending_drop_lock:
                         self._pending_drop_bytes = 0
                 self._audio_queue = queue.Queue(maxsize=self._queue_capacity)
@@ -252,6 +256,8 @@ class AudioStreamServer:
                 while True:
                     self._audio_queue.get_nowait()
                     dropped += 1
+                    if self._isolated_clients:
+                        self.playback_dropped_blocks += 1
                     self._audio_queue.put_nowait(data)
                     break
             except queue.Empty:
@@ -261,7 +267,7 @@ class AudioStreamServer:
             now = time.monotonic()
             if now - getattr(self, "_last_drop_log", 0.0) > self._DROP_LOG_INTERVAL:
                 self._last_drop_log = now
-                log.warning(f"{self._label} 音频队列溢出: 丢弃最旧 {dropped} 块 (~{dropped * 8}ms)")
+                log.warning("%s 音频队列溢出: 丢弃最旧 %d 块", self._label, dropped)
 
     def _authorize_stream_request(self, request: web.Request) -> web.Response | None:
         """验证流会话令牌，并限制同时拉流数。"""
@@ -474,6 +480,11 @@ class AudioStreamServer:
             self._isolated_clients[token] = (abort, loop, transport)
             generation = self._generation
             audio_queue = self._audio_queue
+            if self._pre_roll_blocks is not None:
+                # Join near the live edge. Once connected, retain small bursts
+                # in full instead of skipping samples already due for playback.
+                while audio_queue.qsize() > self._pre_roll_blocks:
+                    audio_queue.get_nowait()
         started = last_report = time.monotonic()
         written = 0
         response = web.StreamResponse(headers=headers)
