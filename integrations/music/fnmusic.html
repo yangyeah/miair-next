@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="zh-CN"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>飞牛音乐 · MiAir</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#f5f7fa;color:#17212b;font:16px/1.6 system-ui,sans-serif}main{max-width:720px;margin:36px auto;padding:24px;background:white;border-radius:16px}h1{font-size:26px}label{display:block;margin:16px 0}input,select,button{font:inherit;padding:10px;border:1px solid #c8d0d8;border-radius:8px}input:not([type=checkbox]),select{display:block;width:100%;margin-top:5px}button{background:#16756c;color:white;cursor:pointer}small{color:#607080}#status{white-space:pre-wrap;overflow-wrap:anywhere;padding:14px;background:#edf5f3;border-radius:8px}@media(max-width:600px){main{margin:12px;padding:18px}}
+</style>
+<main><h1>飞牛音乐</h1><p>从本地音乐库点歌，使用飞牛音乐账号收藏。</p>
+<form id="login"><label>MiAir 用户名<input name="username" autocomplete="username" required></label><label>MiAir 密码<input name="password" type="password" autocomplete="current-password" required></label><button>登录管理后台</button></form>
+<form id="config" hidden>
+<label><input name="enabled" type="checkbox" checked> 启用本地音乐语音联动</label>
+<label>音箱<select name="did" required></select></label>
+<label>音乐数据库路径<input name="database" placeholder="/catalog/music.db" required></label>
+<label>允许播放的音乐目录<input name="music_root" placeholder="/vol2/1000/example/music" required></label>
+<label>音箱可访问的 MiAir 地址<input name="public_url" placeholder="http://192.168.1.10:8300" required></label>
+<details><summary>收藏账号（可选）</summary><label>音乐账号凭据文件路径<input name="music_token_file"></label><label>音乐服务 socket 路径<input name="music_socket" placeholder="/var/run/trim_music.socket"></label><small>凭据由管理员挂载，页面不显示凭据内容。</small></details>
+<p><button>检查并保存</button> <button type="button" id="refresh">刷新状态</button></p></form>
+<p id="status" role="status">请使用 MiAir 管理员账号登录。</p>
+<small>可说“播放王心凌的大眠”“播放周杰伦的歌”“下一首”“收藏”“停下”。没有命中本地文件时会显示结果。</small></main>
+<script>
+let token='';const login=document.querySelector('#login'),form=document.querySelector('#config'),state=document.querySelector('#status');
+async function api(path,body){const r=await fetch('/api/v1/'+path,{method:body?'POST':'GET',headers:{'Content-Type':'application/json',...(token?{Authorization:'Bearer '+token}:{})},...(body?{body:JSON.stringify(body)}:{})});const d=await r.json();if(!r.ok)throw Error(d.detail||'请求失败');return d}
+async function load(){const d=await api('fnmusic/config');state.textContent=d.state+(d.last?'\n上次口令：'+d.last:'');for(const [k,v] of Object.entries(d.config)){const field=form.elements.namedItem(k);if(field){if(field.type==='checkbox')field.checked=v;else field.value=v}}}
+login.onsubmit=async e=>{e.preventDefault();try{const data=Object.fromEntries(new FormData(login));token=(await api('login',data)).access_token;login.password.value='';const speakers=await api('speakers');form.did.replaceChildren();for(const s of speakers.filter(s=>s.enabled!==false)){form.did.add(new Option(s.dlna_name||s.name,s.did))}await load();login.hidden=true;form.hidden=false}catch(e){state.textContent=e.message}};
+form.onsubmit=async e=>{e.preventDefault();try{const body=Object.fromEntries(new FormData(form));body.enabled=form.enabled.checked;await api('fnmusic/config',body);await load();state.textContent='已保存。\n'+state.textContent}catch(e){state.textContent=e.message}};
+document.querySelector('#refresh').onclick=()=>load().catch(e=>state.textContent=e.message);
+</script></html>
